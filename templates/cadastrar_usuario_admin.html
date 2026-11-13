@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novo usuário - ATIVA Fitness</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cadastrar_usuario_admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
+</head>
+<body>
+    <header class="topo">
+        <img src="{{ url_for('static', filename='img/logobranca.png') }}" alt="ATIVA Fitness">
+        <a href="{{ url_for('escolher_tipo_usuario') }}">Trocar tipo de usuário</a>
+    </header>
+    <main class="caixa">
+        {% if perfil == 1 %}
+            <h1>Novo administrador</h1>
+        {% elif perfil == 2 %}
+            <h1>Novo professor</h1>
+        {% else %}
+            <h1>Novo aluno</h1>
+        {% endif %}
+        <p>Preencha os dados para cadastrar o usuário.</p>
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% for categoria, mensagem in mensagens %}
+                <div class="mensagem {{ categoria }}">{{ mensagem }}</div>
+            {% endfor %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('cadastrar_usuario_admin', perfil=perfil) }}">
+            <label for="nome">Nome completo</label>
+            <input type="text" name="nome" id="nome" maxlength="100" required>
+            <label for="email">E-mail</label>
+            <input type="email" name="email" id="email" maxlength="150" required>
+            {% if perfil == 2 %}
+                <label for="especialidade">Especialidade do professor</label>
+                <input type="text" name="especialidade" id="especialidade" placeholder="Ex.: Pilates, Dança, Muay Thai" maxlength="100" required>
+            {% endif %}
+            <label for="senha">Senha</label>
+            <input type="password" name="senha" id="senha" minlength="8" required>
+            <label for="confirmar_senha">Confirmar senha</label>
+            <input type="password" name="confirmar_senha" id="confirmar_senha" minlength="8" required>
+            <p class="dica">A senha precisa ter letra maiúscula, minúscula, número e caractere especial.</p>
+            <button type="submit">Cadastrar usuário</button>
+        </form>
+    </main>
+</body>
+</html>

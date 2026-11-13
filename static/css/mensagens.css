@@ -1,0 +1,49 @@
+/* Mesmo estilo de mensagens em todas as páginas. */
+.mensagem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 16px;
+    margin: 14px 0 20px;
+    border-radius: 10px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+.mensagem.sucesso, .mensagem.success {
+    background: #e8f5e9;
+    color: #17652a;
+    border: 1px solid #a5d6a7;
+}
+.mensagem.sucesso::before, .mensagem.success::before {
+    content: "✓";
+    background: #238636;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+.mensagem.erro, .mensagem.error {
+    background: #ffebee;
+    color: #b71c1c;
+    border: 1px solid #ffcdd2;
+}
+.mensagem.erro::before, .mensagem.error::before {
+    content: "!";
+    background: #d32f2f;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}

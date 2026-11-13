@@ -10,6 +10,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/listar_modalidades.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 
 <body>
@@ -114,6 +115,14 @@
                                 </td>
 
                                 <td class="acoes">
+
+                                    <form method="POST" action="{{ url_for('alterar_status_modalidade', id_modalidade=modalidade[0]) }}">
+                                        {% if modalidade[3] == 1 %}
+                                            <button type="submit" class="botao-status">Inativar</button>
+                                        {% else %}
+                                            <button type="submit" class="botao-status">Ativar</button>
+                                        {% endif %}
+                                    </form>
 
                                     <a href="{{ url_for('editar_modalidade', id_modalidade=modalidade[0]) }}"
                                        class="botao-editar">

@@ -9,6 +9,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/dashboard_admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 <body>
 
@@ -119,6 +120,10 @@
                 <h2>Acesso rápido</h2>
 
                 <div class="botoes">
+
+                    <a href="{{ url_for('escolher_tipo_usuario') }}" class="botao botao-principal">
+                        + Cadastrar usuário
+                    </a>
 
                     <a href="{{ url_for('cadastrar_aula') }}" class="botao botao-principal">
                         + Nova aula

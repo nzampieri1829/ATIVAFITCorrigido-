@@ -10,6 +10,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/editar_modalidade.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 
 <body>
@@ -41,7 +42,7 @@
                         type="text"
                         id="nome"
                         name="nome"
-                        value="{{ request.form.get('nome', modalidade[1]) }}"
+                        value="{{ request.form['nome'] if 'nome' in request.form else modalidade[1] }}"
                         maxlength="100"
                         required
                     >
@@ -54,14 +55,14 @@
                         id="descricao"
                         name="descricao"
                         rows="4"
-                    >{{ request.form.get('descricao', modalidade[2] or '') }}</textarea>
+                    >{{ request.form['descricao'] if 'descricao' in request.form else modalidade[2] or '' }}</textarea>
                 </div>
 
                 <div class="campo">
                     <label for="ativo">Situação da modalidade</label>
                     <select id="ativo" name="ativo">
-                        <option value="1" {% if request.form.get('ativo', modalidade[3]|string) == '1' %}selected{% endif %}>Ativa</option>
-                        <option value="0" {% if request.form.get('ativo', modalidade[3]|string) == '0' %}selected{% endif %}>Inativa</option>
+                        <option value="1" {% if (request.form['ativo'] if 'ativo' in request.form else modalidade[3]|string) == '1' %}selected{% endif %}>Ativa</option>
+                        <option value="0" {% if (request.form['ativo'] if 'ativo' in request.form else modalidade[3]|string) == '0' %}selected{% endif %}>Inativa</option>
                     </select>
                 </div>
 

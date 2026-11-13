@@ -10,6 +10,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/cadastrar_aula.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 
 <body>
@@ -93,7 +94,7 @@
 
                         {% for modalidade in modalidades %}
                             <option value="{{ modalidade[0] }}"
-                                {% if request.form.get('modalidade', '')|string == modalidade[0]|string %}
+                                {% if 'modalidade' in request.form and request.form['modalidade'] == modalidade[0]|string %}
                                     selected
                                 {% endif %}>
                                 {{ modalidade[1] }}
@@ -115,7 +116,7 @@
 
                         {% for professor in professores %}
                             <option value="{{ professor[0] }}"
-                                {% if request.form.get('professor', '')|string == professor[0]|string %}
+                                {% if 'professor' in request.form and request.form['professor'] == professor[0]|string %}
                                     selected
                                 {% endif %}>
                                 {{ professor[1] }}
@@ -131,47 +132,46 @@
 
                     <div class="dias-semana">
 
-                        {% set dias_selecionados = request.form.getlist('dias') %}
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="1"
-                                {% if '1' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_1" value="1"
+                                {% if 'dia_1' in request.form %}checked{% endif %}>
                             Segunda-feira
                         </label>
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="2"
-                                {% if '2' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_2" value="2"
+                                {% if 'dia_2' in request.form %}checked{% endif %}>
                             Terça-feira
                         </label>
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="3"
-                                {% if '3' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_3" value="3"
+                                {% if 'dia_3' in request.form %}checked{% endif %}>
                             Quarta-feira
                         </label>
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="4"
-                                {% if '4' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_4" value="4"
+                                {% if 'dia_4' in request.form %}checked{% endif %}>
                             Quinta-feira
                         </label>
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="5"
-                                {% if '5' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_5" value="5"
+                                {% if 'dia_5' in request.form %}checked{% endif %}>
                             Sexta-feira
                         </label>
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="6"
-                                {% if '6' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_6" value="6"
+                                {% if 'dia_6' in request.form %}checked{% endif %}>
                             Sábado
                         </label>
 
                         <label class="opcao-dia">
-                            <input type="checkbox" name="dias" value="7"
-                                {% if '7' in dias_selecionados %}checked{% endif %}>
+                            <input type="checkbox" name="dia_7" value="7"
+                                {% if 'dia_7' in request.form %}checked{% endif %}>
                             Domingo
                         </label>
 
@@ -185,7 +185,7 @@
                     <input type="time"
                            id="hora_inicio"
                            name="hora_inicio"
-                           value="{{ request.form.get('hora_inicio', '') }}"
+                           value="{{ request.form['hora_inicio'] if 'hora_inicio' in request.form else '' }}"
                            required>
                 </div>
 
@@ -195,7 +195,7 @@
                     <input type="time"
                            id="hora_fim"
                            name="hora_fim"
-                           value="{{ request.form.get('hora_fim', '') }}"
+                           value="{{ request.form['hora_fim'] if 'hora_fim' in request.form else '' }}"
                            required>
                 </div>
 
@@ -208,7 +208,7 @@
                            name="capacidade"
                            min="1"
                            max="18"
-                           value="{{ request.form.get('capacidade', '') }}"
+                           value="{{ request.form['capacidade'] if 'capacidade' in request.form else '' }}"
                            placeholder="Ex: 18"
                            required>
                 </div>

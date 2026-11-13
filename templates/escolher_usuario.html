@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar usuário - ATIVA Fitness</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cadastrar_usuario_admin.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
+</head>
+<body>
+    <header class="topo">
+        <img src="{{ url_for('static', filename='img/logobranca.png') }}" alt="ATIVA Fitness">
+        <a href="{{ url_for('dashboard_admin') }}">Voltar ao painel</a>
+    </header>
+    <main class="caixa">
+        <h1>Cadastrar usuário</h1>
+        <p>Primeiro, escolha qual usuário deseja cadastrar.</p>
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% for categoria, mensagem in mensagens %}
+                <div class="mensagem {{ categoria }}">{{ mensagem }}</div>
+            {% endfor %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('escolher_tipo_usuario') }}">
+            <label for="perfil">Tipo de usuário</label>
+            <select name="perfil" id="perfil" required>
+                <option value="">Selecione uma opção</option>
+                <option value="1">Administrador</option>
+                <option value="3">Aluno</option>
+                <option value="2">Professor</option>
+            </select>
+            <button type="submit">Continuar</button>
+        </form>
+    </main>
+</body>
+</html>

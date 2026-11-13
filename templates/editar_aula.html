@@ -9,6 +9,7 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/cadastrar_aula.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 
 <body>
@@ -119,7 +120,7 @@
                         {% for numero, nome in dias_disponiveis %}
                             <label class="opcao-dia">
                                 <input type="checkbox"
-                                       name="dias"
+                                       name="dia_{{ numero }}"
                                        value="{{ numero }}"
                                        {% if numero|string in dados.dias %}checked{% endif %}>
                                 {{ nome }}

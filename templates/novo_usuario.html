@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Criar Conta | ATIVA Fitness</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/novousuario.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 
 <body>
@@ -60,17 +61,10 @@
                         na ATIVA Fitness </p>
                 </div>
 
-                {% with mensagens = get_flashed_messages() %}
+                {% with mensagens = get_flashed_messages(with_categories=true) %}
                     {% if mensagens %}
-                        {% for mensagem in mensagens %}
-                            <p class="mensagem
-                                {% if 'sucesso' in mensagem|lower %}
-                                    sucesso
-                                {% else %}
-                                    erro
-                                {% endif %}">
-                                {{ mensagem }}
-                            </p>
+                        {% for categoria, mensagem in mensagens %}
+                            <p class="mensagem {{ categoria }}">{{ mensagem }}</p>
                         {% endfor %}
                     {% endif %}
                 {% endwith %}

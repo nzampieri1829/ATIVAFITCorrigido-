@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 import fdb
 from flask_bcrypt import Bcrypt
-from time import localtime
 from fpdf import FPDF
 
 
@@ -12,7 +11,7 @@ bcrypt = Bcrypt(app)
 
 # Conexão com o banco
 host = 'localhost'
-database = r'C:\Users\Aluno\Downloads\BancodadosATF\TRABALHOATFIT.FDB'
+database = r'C:\Users\Aluno\Downloads\BancodadosATFC\TRABALHOATFIT.FDB'
 user = 'sysdba'
 password = 'sysdba'
 
@@ -22,6 +21,43 @@ con = fdb.connect(
     user=user,
     password=password
 )
+
+
+# Prepara o banco para agendar cada dia separadamente e cadastrar professores.
+# Só adiciona as colunas quando elas ainda não existem.
+def preparar_banco():
+    cursor = con.cursor()
+    try:
+        try:
+            cursor.execute('SELECT ID_DIA FROM AGENDAMENTO WHERE 1 = 0')
+        except Exception:
+            con.rollback()
+            cursor.execute('ALTER TABLE AGENDAMENTO ADD ID_DIA INTEGER')
+            con.commit()
+
+        try:
+            cursor.execute('SELECT ESPECIALIDADE FROM USUARIO WHERE 1 = 0')
+        except Exception:
+            con.rollback()
+            cursor.execute('ALTER TABLE USUARIO ADD ESPECIALIDADE VARCHAR(100)')
+            con.commit()
+
+        # Inscrições antigas: vincula ao primeiro dia da aula.
+        cursor.execute("""
+            UPDATE AGENDAMENTO G
+            SET ID_DIA = (
+                SELECT FIRST 1 D.ID_DIA
+                FROM DIA_SEMANA D
+                WHERE D.ID_AULA = G.ID_AULA
+                ORDER BY D.DIA_SEMANA
+            )
+            WHERE G.ID_DIA IS NULL
+        """)
+        con.commit()
+    finally:
+        cursor.close()
+
+preparar_banco()
 
 
 # Perfis utilizados pelo sistema:
@@ -37,14 +73,13 @@ for numero, nome in DIAS_SEMANA.items():
     DIAS_HTML[str(numero)] = nome
 
 # Conta apenas as inscrições de alunos em uma aula.
-def contar_inscritos(cursor, id_aula):
+def contar_inscritos(cursor, id_dia):
     cursor.execute("""
         SELECT COUNT(*)
         FROM AGENDAMENTO G
         INNER JOIN USUARIO U ON G.ID_USUARIO = U.ID_USUARIO
-        WHERE G.ID_AULA = ? AND U.PERFIL = 3
-    """, (id_aula,))
-
+        WHERE G.ID_DIA = ? AND U.PERFIL = 3
+    """, (id_dia,))
     return cursor.fetchone()[0]
 
 
@@ -72,7 +107,7 @@ def minhas_proximas_aulas(cursor, id_usuario, perfil):
             FROM AGENDAMENTO G
             INNER JOIN AULA A ON G.ID_AULA = A.ID_AULA
             INNER JOIN MODALIDADE M ON A.ID_MODALIDADE = M.ID_MODALIDADE
-            INNER JOIN DIA_SEMANA D ON A.ID_AULA = D.ID_AULA
+            INNER JOIN DIA_SEMANA D ON G.ID_DIA = D.ID_DIA
             WHERE G.ID_USUARIO = ?
             ORDER BY D.DIA_SEMANA, D.HORA_INICIO
         """, (id_usuario,))
@@ -90,8 +125,8 @@ def minhas_proximas_aulas(cursor, id_usuario, perfil):
             'nome': nome,
             'descricao': descricao,
             'dia': DIAS_SEMANA[int(dia)],
-            'inicio': str(inicio)[:5],
-            'fim': str(fim)[:5]
+            'inicio': inicio,
+            'fim': fim
         }
 
         resultado.append(aula)
@@ -115,57 +150,55 @@ def horario_valido(horario):
     return int(horas) <= 23 and int(minutos) <= 59
 
 
-def realizar_agendamento(cursor, id_usuario, id_aula):
-    # Confere se a aula existe e tem vaga.
+def realizar_agendamento(cursor, id_usuario, id_aula, id_dia):
+    # Busca a capacidade da aula.
     cursor.execute('SELECT CAPACIDADE FROM AULA WHERE ID_AULA = ?', (id_aula,))
     aula = cursor.fetchone()
     if not aula:
         return 'Aula não encontrada.', 'erro'
 
-    # Confere se o aluno já está inscrito nessa aula.
-    cursor.execute("""
-        SELECT ID_AGENDAMENTO FROM AGENDAMENTO
-        WHERE ID_USUARIO = ? AND ID_AULA = ?
-    """, (id_usuario, id_aula))
-    if cursor.fetchone():
-        return 'Você já está inscrito nesta aula.', 'erro'
-
-    ocupadas = contar_inscritos(cursor, id_aula)
-    if ocupadas >= aula[0]:
-        return 'Esta aula está esgotada.', 'erro'
-
-    # Pega os dias e horários da aula que o aluno quer agendar.
+    # Confirma que o dia escolhido pertence a essa aula.
     cursor.execute("""
         SELECT DIA_SEMANA, HORA_INICIO, HORA_FIM
-        FROM DIA_SEMANA WHERE ID_AULA = ?
-    """, (id_aula,))
-    horarios_novos = cursor.fetchall()
+        FROM DIA_SEMANA
+        WHERE ID_DIA = ? AND ID_AULA = ?
+    """, (id_dia, id_aula))
+    horario_novo = cursor.fetchone()
+    if not horario_novo:
+        return 'Dia da aula não encontrado.', 'erro'
 
-    # Pega as aulas que o aluno já agendou.
+    # Não deixa repetir a inscrição no mesmo dia.
     cursor.execute("""
-        SELECT ID_AULA FROM AGENDAMENTO WHERE ID_USUARIO = ?
+        SELECT ID_AGENDAMENTO FROM AGENDAMENTO
+        WHERE ID_USUARIO = ? AND ID_DIA = ?
+    """, (id_usuario, id_dia))
+    if cursor.fetchone():
+        return 'Você já está inscrito neste dia.', 'erro'
+
+    inscritos = contar_inscritos(cursor, id_dia)
+    if inscritos >= aula[0]:
+        return 'Esta aula está esgotada neste dia.', 'erro'
+
+    # Verifica conflitos somente com os dias já agendados.
+    cursor.execute("""
+        SELECT D.DIA_SEMANA, D.HORA_INICIO, D.HORA_FIM
+        FROM AGENDAMENTO G
+        INNER JOIN DIA_SEMANA D ON G.ID_DIA = D.ID_DIA
+        WHERE G.ID_USUARIO = ?
     """, (id_usuario,))
-    aulas_agendadas = cursor.fetchall()
+    horarios_marcados = cursor.fetchall()
 
-    for inscricao in aulas_agendadas:
-        cursor.execute("""
-            SELECT DIA_SEMANA, HORA_INICIO, HORA_FIM
-            FROM DIA_SEMANA WHERE ID_AULA = ?
-        """, (inscricao[0],))
-        horarios_marcados = cursor.fetchall()
-
-        for dia_marcado, inicio_marcado, fim_marcado in horarios_marcados:
-            for dia_novo, inicio_novo, fim_novo in horarios_novos:
-                if dia_marcado == dia_novo:
-                    if inicio_marcado < fim_novo and fim_marcado > inicio_novo:
-                        return 'Você já tem uma aula agendada nesse dia e horário.', 'erro'
+    for dia, inicio, fim in horarios_marcados:
+        if dia == horario_novo[0]:
+            if inicio < horario_novo[2] and fim > horario_novo[1]:
+                return 'Você já tem aula nesse dia e horário.', 'erro'
 
     cursor.execute("""
-        INSERT INTO AGENDAMENTO (ID_USUARIO, ID_AULA, DATA_AGENDAMENTO)
-        VALUES (?, ?, CURRENT_DATE)
-    """, (id_usuario, id_aula))
+        INSERT INTO AGENDAMENTO (ID_USUARIO, ID_AULA, ID_DIA, DATA_AGENDAMENTO)
+        VALUES (?, ?, ?, CURRENT_DATE)
+    """, (id_usuario, id_aula, id_dia))
     con.commit()
-    return 'Você está inscrito na aula com sucesso!', 'sucesso'
+    return 'Inscrição realizada com sucesso!', 'sucesso'
 
 
 # Landing page
@@ -219,7 +252,7 @@ def novo_usuario():
     nome = request.form['nome'].strip()
     email = request.form['email'].strip()
     senha = request.form['senha']
-    confirmar_senha = request.form.get('confirmar_senha', '')
+    confirmar_senha = request.form['confirmar_senha']
 
     # Verificação campos preenchidos
     if not nome or not email or not senha or not confirmar_senha:
@@ -305,8 +338,8 @@ def login():
     if request.method == 'POST':
 
         # Pegar os dados enviados pelo formulário
-        email = request.form.get('email', '').strip()
-        senha = request.form.get('senha', '')
+        email = request.form['email'].strip()
+        senha = request.form['senha']
 
         # Verificar se os campos foram preenchidos
         if not email or not senha:
@@ -454,10 +487,10 @@ def index():
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
 
-    if session.get('perfil') == 1:
+    if session['perfil'] == 1:
         return redirect(url_for('dashboard_admin'))
 
-    perfil = session.get('perfil')
+    perfil = session['perfil']
     if perfil not in (2, 3):
         flash('Perfil não definido.', 'erro')
         return redirect(url_for('login'))
@@ -477,22 +510,27 @@ def index():
             """, (id_usuario,))
             minhas_aulas = cursor.fetchone()[0]
 
-            # Conta apenas aulas com vagas em que o aluno não está inscrito.
-            cursor.execute('SELECT ID_AULA, CAPACIDADE FROM AULA')
-            aulas_cadastradas = cursor.fetchall()
+            # Conta quantos dias de aula ainda têm vaga.
+            cursor.execute("""
+                SELECT D.ID_DIA, A.CAPACIDADE
+                FROM DIA_SEMANA D
+                INNER JOIN AULA A ON D.ID_AULA = A.ID_AULA
+            """)
+            dias_cadastrados = cursor.fetchall()
 
             cursor.execute("""
-                SELECT ID_AULA FROM AGENDAMENTO WHERE ID_USUARIO = ?
+                SELECT ID_DIA FROM AGENDAMENTO WHERE ID_USUARIO = ?
             """, (id_usuario,))
-            minhas_inscricoes = []
+            dias_agendados = []
             for inscricao in cursor.fetchall():
-                minhas_inscricoes.append(inscricao[0])
+                dias_agendados.append(inscricao[0])
 
             aulas_disponiveis = 0
-            for id_aula, capacidade in aulas_cadastradas:
-                if id_aula not in minhas_inscricoes:
-                    if contar_inscritos(cursor, id_aula) < capacidade:
+            for id_dia, capacidade in dias_cadastrados:
+                if id_dia not in dias_agendados:
+                    if contar_inscritos(cursor, id_dia) < capacidade:
                         aulas_disponiveis += 1
+
 
         proximas_aulas = minhas_proximas_aulas(cursor, id_usuario, perfil)
         return render_template(
@@ -531,13 +569,15 @@ def editar_perfil():
     if request.method == 'POST':
 
         # Recebe os dados do formulário
-        nome = request.form.get('nome', '').strip()
-        email = request.form.get('email', '').strip()
-        senha = request.form.get('senha', '')
-        senha2 = request.form.get('senha2', '')
+        nome = request.form['nome'].strip()
+        email = request.form['email'].strip()
+        senha = request.form['senha']
+        senha2 = request.form['senha2']
 
         # Recebe a foto enviada
-        foto = request.files.get('foto')
+        foto = None
+        if 'foto' in request.files:
+            foto = request.files['foto']
 
         try:
             # Verifica se nome e e-mail foram preenchidos
@@ -756,8 +796,8 @@ def cadastrar_modalidade():
         if request.method == 'POST':
 
             # Recebe os dados do formulário
-            nome = request.form.get('nome', '').strip()
-            descricao = request.form.get('descricao', '').strip()
+            nome = request.form['nome'].strip()
+            descricao = request.form['descricao'].strip()
 
             # Verifica se o nome foi preenchido
             if not nome:
@@ -778,10 +818,12 @@ def cadastrar_modalidade():
                 return redirect(url_for('cadastrar_modalidade'))
 
             # Insere a modalidade no banco de dados
+            if not descricao:
+                descricao = None
             cursor.execute("""
                 INSERT INTO MODALIDADE (NOME, DESCRICAO, ATIVO)
                 VALUES (?, ?, ?)
-            """, (nome, descricao if descricao else None, 1))
+            """, (nome, descricao, 1))
 
             # Confirma a gravação no banco
             con.commit()
@@ -808,13 +850,124 @@ def cadastrar_modalidade():
 
 
 
+# Cadastro feito pelo administrador.
+@app.route('/cadastrar_usuario_admin', methods=['GET', 'POST'])
+def escolher_tipo_usuario():
+    if 'id_usuario' not in session:
+        return redirect(url_for('login'))
+    if session['perfil'] != 1:
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        if 'perfil' not in request.form:
+            return redirect(url_for('escolher_tipo_usuario'))
+        try:
+            perfil = int(request.form['perfil'])
+        except ValueError:
+            return redirect(url_for('escolher_tipo_usuario'))
+        if perfil == 1 or perfil == 2 or perfil == 3:
+            return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+    return render_template('escolher_usuario.html')
+
+
+@app.route('/cadastrar_usuario_admin/<int:perfil>', methods=['GET', 'POST'])
+def cadastrar_usuario_admin(perfil):
+    if 'id_usuario' not in session:
+        return redirect(url_for('login'))
+    if session['perfil'] != 1:
+        return redirect(url_for('index'))
+    if perfil not in (1, 2, 3):
+        return redirect(url_for('escolher_tipo_usuario'))
+
+    if request.method == 'POST':
+        nome = request.form['nome'].strip()
+        email = request.form['email'].strip()
+        senha = request.form['senha']
+        confirmar_senha = request.form['confirmar_senha']
+        especialidade = ''
+        if perfil == 2:
+            especialidade = request.form['especialidade'].strip()
+
+        if not nome or not email or not senha or not confirmar_senha:
+            flash('Preencha todos os campos.', 'erro')
+            return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+        if perfil == 2 and not especialidade:
+            flash('Informe a especialidade do professor.', 'erro')
+            return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+        if senha != confirmar_senha:
+            flash('As senhas não são iguais.', 'erro')
+            return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+        if not senha_forte(senha):
+            flash('A senha precisa de 8 caracteres, maiúscula, minúscula, número e símbolo.', 'erro')
+            return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+
+        cursor = con.cursor()
+        try:
+            cursor.execute('SELECT ID_USUARIO FROM USUARIO WHERE UPPER(EMAIL) = UPPER(?)', (email,))
+            if cursor.fetchone():
+                flash('Este e-mail já está cadastrado.', 'erro')
+                return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+
+            senha_hash = bcrypt.generate_password_hash(senha).decode('utf-8')
+            cursor.execute("""
+                INSERT INTO USUARIO (NOME, EMAIL, SENHA, TENTATIVAS, ATIVO, PERFIL, ESPECIALIDADE)
+                VALUES (?, ?, ?, 0, 1, ?, ?)
+            """, (nome, email, senha_hash, perfil, especialidade))
+            con.commit()
+            flash('Usuário cadastrado com sucesso!', 'sucesso')
+            return redirect(url_for('dashboard_admin'))
+        except Exception as erro:
+            con.rollback()
+            print('Erro ao cadastrar usuário pelo administrador:', erro)
+            flash('Não foi possível cadastrar o usuário.', 'erro')
+            return redirect(url_for('cadastrar_usuario_admin', perfil=perfil))
+        finally:
+            cursor.close()
+
+    return render_template('cadastrar_usuario_admin.html', perfil=perfil)
+
+
+# Ativar ou inativar uma modalidade diretamente na tabela.
+@app.route('/alterar_status_modalidade/<int:id_modalidade>', methods=['POST'])
+def alterar_status_modalidade(id_modalidade):
+    if 'id_usuario' not in session:
+        return redirect(url_for('login'))
+    if session['perfil'] != 1:
+        return redirect(url_for('index'))
+
+    cursor = con.cursor()
+    try:
+        cursor.execute('SELECT ATIVO FROM MODALIDADE WHERE ID_MODALIDADE = ?', (id_modalidade,))
+        modalidade = cursor.fetchone()
+        if not modalidade:
+            flash('Modalidade não encontrada.', 'erro')
+        else:
+            if modalidade[0] == 1:
+                novo_status = 0
+                mensagem = 'Modalidade inativada com sucesso!'
+            else:
+                novo_status = 1
+                mensagem = 'Modalidade ativada com sucesso!'
+            cursor.execute('UPDATE MODALIDADE SET ATIVO = ? WHERE ID_MODALIDADE = ?',
+                           (novo_status, id_modalidade))
+            con.commit()
+            flash(mensagem, 'sucesso')
+    except Exception as erro:
+        con.rollback()
+        print('Erro ao mudar situação da modalidade:', erro)
+        flash('Não foi possível mudar a situação.', 'erro')
+    finally:
+        cursor.close()
+    return redirect(url_for('listar_modalidades'))
+
+
 # Dashboard administrativo
 @app.route('/dashboard_admin')
 def dashboard_admin():
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
 
-    if session.get('perfil') != 1:
+    if session['perfil'] != 1:
         flash('Acesso permitido somente ao administrador.', 'erro')
         return redirect(url_for('index'))
 
@@ -933,9 +1086,9 @@ def editar_modalidade(id_modalidade):
         # Se o formulário for enviado
         if request.method == 'POST':
 
-            nome = request.form.get('nome', '').strip()
-            descricao = request.form.get('descricao', '').strip()
-            ativo = request.form.get('ativo', str(modalidade[3]))
+            nome = request.form['nome'].strip()
+            descricao = request.form['descricao'].strip()
+            ativo = request.form['ativo']
 
             # Verifica se o nome foi preenchido
             if not nome:
@@ -965,11 +1118,16 @@ def editar_modalidade(id_modalidade):
                 )
 
             # Atualiza os dados da modalidade
+            if ativo == '0':
+                novo_status = 0
+            else:
+                novo_status = 1
+
             cursor.execute("""
                 UPDATE MODALIDADE
                 SET NOME = ?, DESCRICAO = ?, ATIVO = ?
                 WHERE ID_MODALIDADE = ?
-            """, (nome, descricao or None, int(ativo) if ativo in ('0', '1') else 1, id_modalidade))
+            """, (nome, descricao, novo_status, id_modalidade))
 
             con.commit()
 
@@ -1119,7 +1277,10 @@ def cadastrar_aula():
 
             modalidade = request.form['modalidade'].strip()
             professor = request.form['professor'].strip()
-            dias_selecionados = request.form.getlist('dias')
+            dias_selecionados = []
+            for numero in range(1, 8):
+                if 'dia_' + str(numero) in request.form:
+                    dias_selecionados.append(str(numero))
             hora_inicio = request.form['hora_inicio'].strip()
             hora_fim = request.form['hora_fim'].strip()
             capacidade_texto = request.form['capacidade'].strip()
@@ -1334,7 +1495,7 @@ def grade_de_aulas():
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
 
-    perfil = session.get('perfil')
+    perfil = session['perfil']
     if perfil == 2:
         return redirect(url_for('grade_aulas_professor'))
     if perfil == 3:
@@ -1346,7 +1507,7 @@ def grade_de_aulas():
     try:
         cursor.execute("""
             SELECT A.ID_AULA, M.NOME, U.NOME, A.CAPACIDADE,
-                   D.DIA_SEMANA, D.HORA_INICIO, D.HORA_FIM
+                   D.DIA_SEMANA, D.HORA_INICIO, D.HORA_FIM, D.ID_DIA
             FROM AULA A
             INNER JOIN MODALIDADE M ON A.ID_MODALIDADE = M.ID_MODALIDADE
             INNER JOIN USUARIO U ON A.ID_USUARIO = U.ID_USUARIO
@@ -1357,8 +1518,8 @@ def grade_de_aulas():
 
         aulas = []
         for aula in registros:
-            inscritos = contar_inscritos(cursor, aula[0])
-            aulas.append(aula + (inscritos,))
+            inscritos = contar_inscritos(cursor, aula[7])
+            aulas.append(aula[:7] + (inscritos,))
         return render_template('grade_de_aulas.html', aulas=aulas,
                                dias_semana=DIAS_HTML)
     except Exception as erro:
@@ -1371,11 +1532,12 @@ def grade_de_aulas():
 
 
 # Grade do aluno: esconde aulas lotadas, exceto as já agendadas.
+# Grade do aluno: cada dia tem sua própria inscrição.
 @app.route('/grade_aulas_aluno', methods=['GET', 'POST'])
 def grade_aulas_aluno():
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
-    if session.get('perfil') != 3:
+    if session['perfil'] != 3:
         flash('Acesso permitido somente ao aluno.', 'erro')
         return redirect(url_for('index'))
 
@@ -1383,33 +1545,28 @@ def grade_aulas_aluno():
     cursor = con.cursor()
     try:
         if request.method == 'POST':
-            acao = request.form.get('acao', 'agendar')
-            try:
-                id_aula = int(request.form.get('id_aula', ''))
-            except ValueError:
-                flash('Selecione uma aula válida.', 'erro')
-                return redirect(url_for('grade_aulas_aluno'))
+            acao = request.form['acao']
+            id_aula = int(request.form['id_aula'])
+            id_dia = int(request.form['id_dia'])
 
             if acao == 'cancelar':
                 cursor.execute("""
                     DELETE FROM AGENDAMENTO
-                    WHERE ID_USUARIO = ? AND ID_AULA = ?
-                """, (id_usuario, id_aula))
-                if cursor.rowcount:
+                    WHERE ID_USUARIO = ? AND ID_AULA = ? AND ID_DIA = ?
+                """, (id_usuario, id_aula, id_dia))
+                if cursor.rowcount > 0:
                     con.commit()
                     flash('Agendamento cancelado com sucesso!', 'sucesso')
                 else:
-                    flash('Você não está inscrito nesta aula.', 'erro')
+                    flash('Você não está inscrito neste dia.', 'erro')
             elif acao == 'agendar':
-                mensagem, categoria = realizar_agendamento(cursor, id_usuario, id_aula)
+                mensagem, categoria = realizar_agendamento(cursor, id_usuario, id_aula, id_dia)
                 flash(mensagem, categoria)
-            else:
-                flash('Ação inválida.', 'erro')
             return redirect(url_for('grade_aulas_aluno'))
 
         cursor.execute("""
             SELECT A.ID_AULA, M.NOME, U.NOME, A.CAPACIDADE,
-                   D.DIA_SEMANA, D.HORA_INICIO, D.HORA_FIM
+                   D.DIA_SEMANA, D.HORA_INICIO, D.HORA_FIM, D.ID_DIA
             FROM AULA A
             INNER JOIN MODALIDADE M ON A.ID_MODALIDADE = M.ID_MODALIDADE
             INNER JOIN USUARIO U ON A.ID_USUARIO = U.ID_USUARIO
@@ -1420,22 +1577,20 @@ def grade_aulas_aluno():
 
         aulas = []
         for aula in registros:
-            id_aula = aula[0]
-            inscritos = contar_inscritos(cursor, id_aula)
-
+            id_dia = aula[7]
+            inscritos = contar_inscritos(cursor, id_dia)
             cursor.execute("""
                 SELECT ID_AGENDAMENTO FROM AGENDAMENTO
-                WHERE ID_USUARIO = ? AND ID_AULA = ?
-            """, (id_usuario, id_aula))
+                WHERE ID_USUARIO = ? AND ID_DIA = ?
+            """, (id_usuario, id_dia))
             minha_inscricao = cursor.fetchone()
+            esta_inscrito = 0
+            if minha_inscricao:
+                esta_inscrito = 1
 
-            # Mostra vagas disponíveis e aulas já agendadas.
-            if inscritos < aula[3] or minha_inscricao:
-                if minha_inscricao:
-                    esta_inscrito = 1
-                else:
-                    esta_inscrito = 0
-                aulas.append(aula + (inscritos, esta_inscrito))
+            # Mostra dias com vaga e os dias em que o aluno está inscrito.
+            if inscritos < aula[3] or esta_inscrito == 1:
+                aulas.append(aula[:7] + (inscritos, esta_inscrito, id_dia))
 
         return render_template('grade_aulas_aluno.html', aulas=aulas,
                                dias_semana=DIAS_HTML)
@@ -1452,7 +1607,7 @@ def grade_aulas_aluno():
 def grade_aulas_professor():
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
-    if session.get('perfil') != 2:
+    if session['perfil'] != 2:
         flash('Acesso permitido somente ao professor.', 'erro')
         return redirect(url_for('index'))
 
@@ -1460,7 +1615,7 @@ def grade_aulas_professor():
     try:
         cursor.execute("""
             SELECT M.NOME, D.DIA_SEMANA, D.HORA_INICIO, D.HORA_FIM,
-                   A.CAPACIDADE, A.ID_AULA
+                   A.CAPACIDADE, D.ID_DIA
             FROM AULA A
             INNER JOIN MODALIDADE M ON M.ID_MODALIDADE = A.ID_MODALIDADE
             INNER JOIN DIA_SEMANA D ON D.ID_AULA = A.ID_AULA
@@ -1470,8 +1625,8 @@ def grade_aulas_professor():
         registros = cursor.fetchall()
 
         aulas = []
-        for nome, dia, inicio, fim, capacidade, id_aula in registros:
-            inscritos = contar_inscritos(cursor, id_aula)
+        for nome, dia, inicio, fim, capacidade, id_dia in registros:
+            inscritos = contar_inscritos(cursor, id_dia)
             aulas.append((nome, dia, inicio, fim, capacidade, inscritos))
 
         return render_template('grade_aulas_professor.html', aulas=aulas,
@@ -1490,13 +1645,21 @@ def grade_aulas_professor():
 def agendar_aula(id_aula):
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
-    if session.get('perfil') != 3:
+    if session['perfil'] != 3:
         flash('Somente alunos podem se inscrever.', 'erro')
         return redirect(url_for('index'))
 
     cursor = con.cursor()
     try:
-        mensagem, categoria = realizar_agendamento(cursor, session['id_usuario'], id_aula)
+        cursor.execute("""
+            SELECT FIRST 1 ID_DIA FROM DIA_SEMANA
+            WHERE ID_AULA = ? ORDER BY DIA_SEMANA
+        """, (id_aula,))
+        primeiro_dia = cursor.fetchone()
+        if primeiro_dia:
+            mensagem, categoria = realizar_agendamento(cursor, session['id_usuario'], id_aula, primeiro_dia[0])
+        else:
+            mensagem, categoria = 'Aula sem dia cadastrado.', 'erro'
         flash(mensagem, categoria)
     except Exception as erro:
         con.rollback()
@@ -1584,12 +1747,15 @@ def editar_aula(id_aula):
 
         if request.method == 'POST':
 
-            modalidade = request.form.get('modalidade', '').strip()
-            professor = request.form.get('professor', '').strip()
-            dias_selecionados = request.form.getlist('dias')
-            hora_inicio = request.form.get('hora_inicio', '').strip()
-            hora_fim = request.form.get('hora_fim', '').strip()
-            capacidade_texto = request.form.get('capacidade', '').strip()
+            modalidade = request.form['modalidade'].strip()
+            professor = request.form['professor'].strip()
+            dias_selecionados = []
+            for numero in range(1, 8):
+                if 'dia_' + str(numero) in request.form:
+                    dias_selecionados.append(str(numero))
+            hora_inicio = request.form['hora_inicio'].strip()
+            hora_fim = request.form['hora_fim'].strip()
+            capacidade_texto = request.form['capacidade'].strip()
 
             if (
                 not modalidade or not professor or not dias_selecionados
@@ -1658,7 +1824,14 @@ def editar_aula(id_aula):
                             flash('Selecione um professor ativo válido.', 'erro')
 
                         else:
-                            inscritos = contar_inscritos(cursor, id_aula)
+                            # Soma por dia; usa o maior número de inscritos.
+                            cursor.execute('SELECT ID_DIA FROM DIA_SEMANA WHERE ID_AULA = ?', (id_aula,))
+                            dias_da_aula = cursor.fetchall()
+                            inscritos = 0
+                            for registro_dia in dias_da_aula:
+                                total = contar_inscritos(cursor, registro_dia[0])
+                                if total > inscritos:
+                                    inscritos = total
                             # Confere se os dias ou horários foram alterados.
                             mudou_horario = False
                             if hora_inicio != hora_inicio_atual or hora_fim != hora_fim_atual:
@@ -1724,25 +1897,17 @@ def editar_aula(id_aula):
                                         id_aula
                                     ))
 
-                                    # Remove os dias antigos
-                                    cursor.execute("""
-                                        DELETE FROM DIA_SEMANA
-                                        WHERE ID_AULA = ?
-                                    """, (id_aula,))
-
-                                    # Grava os dias e horários atualizados
-                                    for dia in dias:
+                                    # Não troca os IDs dos dias quando já há inscrições.
+                                    if mudou_horario:
                                         cursor.execute("""
-                                            INSERT INTO DIA_SEMANA
-                                                (ID_AULA, DIA_SEMANA,
-                                                 HORA_INICIO, HORA_FIM)
-                                            VALUES (?, ?, ?, ?)
-                                        """, (
-                                            id_aula,
-                                            dia,
-                                            hora_inicio,
-                                            hora_fim
-                                        ))
+                                            DELETE FROM DIA_SEMANA WHERE ID_AULA = ?
+                                        """, (id_aula,))
+                                        for dia in dias:
+                                            cursor.execute("""
+                                                INSERT INTO DIA_SEMANA
+                                                    (ID_AULA, DIA_SEMANA, HORA_INICIO, HORA_FIM)
+                                                VALUES (?, ?, ?, ?)
+                                            """, (id_aula, dia, hora_inicio, hora_fim))
 
                                     con.commit()
 
@@ -1753,15 +1918,26 @@ def editar_aula(id_aula):
                                     con.rollback()
                                     raise
 
-        # Mantém os dados enviados no formulário quando há erro
-        dados_formulario = {
-            'modalidade': request.form.get('modalidade', str(aula[2])),
-            'professor': request.form.get('professor', str(aula[3])),
-            'dias': request.form.getlist('dias') if request.method == 'POST' else dias_atuais,
-            'hora_inicio': request.form.get('hora_inicio', hora_inicio_atual),
-            'hora_fim': request.form.get('hora_fim', hora_fim_atual),
-            'capacidade': request.form.get('capacidade', str(aula[1]))
-        }
+        # Mostra os valores digitados ou os valores atuais da aula.
+        if request.method == 'POST':
+            dados_formulario = {
+                'modalidade': modalidade,
+                'professor': professor,
+                'dias': dias_selecionados,
+                'hora_inicio': hora_inicio,
+                'hora_fim': hora_fim,
+                'capacidade': capacidade_texto
+            }
+        else:
+            dados_formulario = {
+                'modalidade': str(aula[2]),
+                'professor': str(aula[3]),
+                'dias': dias_atuais,
+                'hora_inicio': hora_inicio_atual,
+                'hora_fim': hora_fim_atual,
+                'capacidade': str(aula[1])
+            }
+
 
         return render_template(
             'editar_aula.html',
@@ -1852,34 +2028,22 @@ def excluir_aula(id_aula):
 
 
 
-# Relatórios PDF solicitados para a administração.
-
+# Relatórios PDF para a administração.
 @app.route('/relatorio_aulas/<tipo>')
 def relatorio_aulas(tipo):
-
     if 'id_usuario' not in session:
         return redirect(url_for('login'))
-
-    if session.get('perfil') != 1:
+    if session['perfil'] != 1:
         flash('Somente o administrador pode gerar relatórios.', 'erro')
         return redirect(url_for('index'))
-
-    if tipo not in ('esgotadas', 'com_vagas'):
+    if tipo != 'esgotadas' and tipo != 'com_vagas':
         return redirect(url_for('dashboard_admin'))
 
     cursor = con.cursor()
-
     try:
-        # Escolhe o título do relatório.
-        if tipo == 'esgotadas':
-            titulo = 'Relatorio de aulas esgotadas'
-        else:
-            titulo = 'Relatorio de aulas com vagas'
-
-        # Busca todas as aulas no banco.
         cursor.execute("""
             SELECT M.NOME, U.NOME, D.DIA_SEMANA,
-                   D.HORA_INICIO, D.HORA_FIM, A.CAPACIDADE, A.ID_AULA
+                   D.HORA_INICIO, D.HORA_FIM, A.CAPACIDADE, D.ID_DIA
             FROM AULA A
             INNER JOIN MODALIDADE M ON A.ID_MODALIDADE = M.ID_MODALIDADE
             INNER JOIN USUARIO U ON A.ID_USUARIO = U.ID_USUARIO
@@ -1887,88 +2051,93 @@ def relatorio_aulas(tipo):
             ORDER BY M.NOME, D.DIA_SEMANA, D.HORA_INICIO
         """)
         registros = cursor.fetchall()
-
-        # Separa as aulas esgotadas das que ainda têm vagas.
         aulas = []
-        for nome, professor, dia, inicio, fim, capacidade, id_aula in registros:
-            inscritos = contar_inscritos(cursor, id_aula)
+        for nome, professor, dia, inicio, fim, capacidade, id_dia in registros:
+            inscritos = contar_inscritos(cursor, id_dia)
             if tipo == 'esgotadas' and inscritos >= capacidade:
                 aulas.append((nome, professor, dia, inicio, fim, capacidade, inscritos))
             if tipo == 'com_vagas' and inscritos < capacidade:
                 aulas.append((nome, professor, dia, inicio, fim, capacidade, inscritos))
 
-        # Cria o documento PDF
+        if tipo == 'esgotadas':
+            titulo = 'Aulas esgotadas'
+        else:
+            titulo = 'Aulas com vagas disponíveis'
+
         pdf = FPDF()
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        # Título do PDF
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, 'ATIVA FITNESS', ln=True, align='C')
-
-        pdf.set_font('Arial', 'B', 14)
+        # Logo e título com as cores da academia.
+        pdf.image(app.static_folder + '/img/logoverde.png', x=12, y=10, w=34)
+        pdf.set_y(18)
+        pdf.set_font('Arial', 'B', 18)
+        pdf.set_text_color(23, 101, 42)
+        pdf.cell(0, 12, 'ATIVA FITNESS', ln=True, align='C')
+        pdf.set_font('Arial', 'B', 13)
         pdf.cell(0, 10, titulo, ln=True, align='C')
+        pdf.ln(9)
 
-        pdf.ln(5)
-        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        pdf.ln(10)
+        # Cabeçalho da tabela.
+        colunas = ['Modalidade', 'Professor', 'Dia', 'Horário', 'Inscritos', 'Limite', 'Vagas']
+        larguras = [39, 35, 34, 30, 18, 18, 16]
+        pdf.set_fill_color(23, 101, 42)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Arial', 'B', 9)
+        for i in range(7):
+            pdf.cell(larguras[i], 10, colunas[i], border=1, align='C', fill=True)
+        pdf.ln()
 
-        # Informações das aulas
-        pdf.set_font('Arial', size=11)
+        pdf.set_text_color(35, 45, 35)
+        pdf.set_font('Arial', size=8)
+        linha = 0
+        for nome, professor, dia, inicio, fim, capacidade, inscritos in aulas:
+            if pdf.get_y() > 265:
+                pdf.add_page()
+                pdf.set_font('Arial', 'B', 9)
+                pdf.set_fill_color(23, 101, 42)
+                pdf.set_text_color(255, 255, 255)
+                for i in range(7):
+                    pdf.cell(larguras[i], 10, colunas[i], border=1, align='C', fill=True)
+                pdf.ln()
+                pdf.set_font('Arial', size=8)
+                pdf.set_text_color(35, 45, 35)
+
+            if linha % 2 == 0:
+                pdf.set_fill_color(235, 248, 237)
+            else:
+                pdf.set_fill_color(255, 255, 255)
+
+            horario = inicio + ' - ' + fim
+            vagas = capacidade - inscritos
+            if vagas < 0:
+                vagas = 0
+            valores = [nome[:19], professor[:18], DIAS_SEMANA[int(dia)][:17],
+                       horario, str(inscritos), str(capacidade), str(vagas)]
+            for i in range(7):
+                pdf.cell(larguras[i], 9, valores[i], border=1, align='C', fill=True)
+            pdf.ln()
+            linha += 1
 
         if not aulas:
-            pdf.cell(0, 10, 'Nenhuma aula encontrada.', ln=True)
+            pdf.ln(8)
+            pdf.cell(0, 12, 'Nenhuma aula encontrada.', ln=True, align='C')
 
-        else:
-            for nome, professor, dia, inicio, fim, capacidade, inscritos in aulas:
+        pdf.ln(10)
+        pdf.set_font('Arial', 'B', 11)
+        pdf.set_text_color(23, 101, 42)
+        pdf.cell(0, 10, 'Total de horários: ' + str(len(aulas)), ln=True)
 
-                if dia:
-                    nome_dia = DIAS_SEMANA.get(int(dia), '-')
-                    horario = str(inicio)[:5] + ' ate ' + str(fim)[:5]
-                else:
-                    nome_dia = '-'
-                    horario = '-'
-
-                vagas = capacidade - inscritos
-
-                pdf.multi_cell(0, 8, f'Modalidade: {nome}')
-                pdf.multi_cell(0, 8, f'Professor: {professor}')
-                pdf.cell(0, 8, f'Dia: {nome_dia}', ln=True)
-                pdf.cell(0, 8, f'Horario: {horario}', ln=True)
-                pdf.cell(0, 8, f'Inscritos: {inscritos}', ln=True)
-                pdf.cell(0, 8, f'Capacidade: {capacidade}', ln=True)
-                pdf.cell(0, 8, f'Vagas restantes: {max(0, vagas)}', ln=True)
-
-                pdf.ln(8)
-
-        # Total de registros
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(0, 10, f'Total de registros: {len(aulas)}',
-                 ln=True, align='C')
-
-        # Salva o PDF
-        nome_arquivo = 'aulas_' + tipo + '.pdf'
-        caminho = app.root_path + '/' + nome_arquivo
-
-        pdf.output(caminho)
-
-        # Envia o arquivo para download
-        return send_file(
-            caminho,
-            as_attachment=True,
-            download_name=nome_arquivo,
-            mimetype='application/pdf'
-        )
-
+        arquivo = app.root_path + '/aulas_' + tipo + '.pdf'
+        pdf.output(arquivo)
+        return send_file(arquivo, as_attachment=True, mimetype='application/pdf')
     except Exception as erro:
         con.rollback()
         print('Erro ao gerar PDF:', erro)
         flash('Não foi possível gerar o relatório.', 'erro')
         return redirect(url_for('dashboard_admin'))
-
     finally:
         cursor.close()
-
 
 
 if __name__ == '__main__':

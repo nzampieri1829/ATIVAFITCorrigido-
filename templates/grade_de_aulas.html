@@ -8,6 +8,7 @@
     <title>Grade de Aulas - ATIVA Fitness</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/grade_de_aulas.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mensagens.css') }}">
 </head>
 
 <body>
@@ -114,8 +115,7 @@
                                 </a>
 
                                 <form method="POST"
-                                      action="{{ url_for('excluir_aula', id_aula=aula[0]) }}"
-                                      onsubmit="return confirm('Tem certeza de que deseja excluir esta aula?');">
+                                      action="{{ url_for('excluir_aula', id_aula=aula[0]) }}">
 
                                     <button type="submit" class="botao-acao excluir">
                                         Excluir

@@ -453,3 +453,7 @@ tbody tr:last-child td {
         padding: 25px 12px;
     }
 }
+
+/* Ativar e inativar modalidades sem usar o banco manualmente. */
+.botao-status { border: 1px solid #17652a; background: #e8f5e9; color: #17652a; border-radius: 7px; padding: 9px 12px; cursor: pointer; font-weight: bold; }
+.botao-status:hover { background: #d1f0d6; }
