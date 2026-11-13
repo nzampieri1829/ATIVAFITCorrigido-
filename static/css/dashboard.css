@@ -1,0 +1,586 @@
+@import url("https://fonts.googleapis.com/css2?family=Google+Sans+Flex:opsz,wght@6..144,1..1000&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap");
+
+/* DASHBOARD */
+
+/* Biblioteca de cores */
+:root {
+    /* Cores principais */
+    --verde-principal: #238636;
+    --verde-escuro: #17652A;
+    --verde-claro: #0acb52;
+
+    /* Cores neutras */
+    --branco: #FFFFFF;
+    --cinza-claro: #F5F5F5;
+    --cinza-medio: #808080;
+    --cinza-escuro: #333333;
+    --preto: #111111;
+
+    /* Cores de mensagens */
+    --sucesso: #2E7D32;
+    --erro: #D32F2F;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Montserrat", sans-serif;
+}
+
+body {
+    height: 100vh;
+    display: flex;
+    overflow: hidden;
+    background-color: var(--branco);
+}
+
+/* MENU LATERAL */
+.menu-lateral {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: var(--verde-escuro);
+    padding: 25px 18px;
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+}
+
+.logo {
+    width: 125px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 35px;
+    margin-right: 80px;
+}
+
+.menu-lateral nav {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.item-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    color: var(--branco);
+    text-decoration: none;
+    font-size: 15px;
+    transition: 0.2s;
+}
+
+.item-menu img {
+    width: 23px;
+    height: 23px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.item-menu:hover,
+.item-menu.ativo {
+    background-color: var(--verde-principal);
+    border-color: var(--verde-claro);
+}
+
+.sair {
+    margin-top: auto;
+}
+
+
+/* =========================================
+   DASHBOARD - NOVO VISUAL
+========================================= */
+
+/* Área principal */
+.conteudo {
+    flex: 1;
+    min-width: 0;
+    min-height: 100vh;
+    height: 100vh;
+    padding: 20px;
+    overflow-y: auto;
+    position: relative;
+}
+
+.painel {
+    width: 96%;
+    max-width: 1250px;
+    min-height: 100%;
+    height: auto;
+    margin: 0 auto;
+    padding-bottom: 35px;
+    position: relative;
+    overflow: hidden;
+    border: none;
+    border-radius: 8px;
+    background: var(--branco);
+    margin-left: 43px;
+}
+/* MENSAGENS DO FLASK NO DASHBOARD */
+.mensagem {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    margin-bottom: 25px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.5;
+    animation: aparecer 0.3s ease-in-out;
+}
+
+/* MENSAGEM DE SUCESSO */
+.mensagem.sucesso {
+    background-color: #E8F5E9;
+    color: #17652A;
+    border: 1px solid #A5D6A7;
+    margin-left: 28px;
+}
+
+.mensagem.sucesso::before {
+    content: "✓";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #238636;
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+/* MENSAGEM DE ERRO */
+.mensagem.erro {
+    background-color: #FFEBEE;
+    color: #B71C1C;
+    border: 1px solid #FFCDD2;
+}
+
+.mensagem.erro::before {
+    content: "!";
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #D32F2F;
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: bold;
+}
+
+/* ANIMAÇÃO SUAVE */
+@keyframes aparecer {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Cabeçalho */
+.cabecalho {
+    width: 100%;
+    height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 25px;
+    position: relative;
+    z-index: 1;
+}
+
+.usuario {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-left: auto;
+    color: var(--verde-escuro);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.icone-usuario {
+    width: 27px;
+    height: 27px;
+    border: 2px solid var(--verde-escuro);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icone-usuario img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
+/* Boas-vindas */
+.boas-vindas {
+    padding: 8px 30px;
+    margin-bottom: 23px;
+    position: relative;
+    z-index: 1;
+}
+
+.boas-vindas h1 {
+    color: var(--cinza-escuro);
+    font-size: 27px;
+    font-weight: 750;
+    margin-bottom: 3px;
+}
+
+.boas-vindas p {
+    color: #999999;
+    font-size: 15px;
+}
+
+/* Cards de resumo */
+.resumo-aulas {
+    display: flex;
+    gap: 18px;
+    padding: 0 30px;
+    margin-bottom: 48px;
+    margin-top: 51px;
+}
+
+.card-resumo {
+    flex: 1;
+    min-height: 110px;
+    background: #eeeeee;
+    border: 1px solid #b8b8b8;
+    border-radius: 9px;
+    box-shadow: 0 3px 4px rgba(0, 0, 0, 0.18);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 8px;
+    text-align: center;
+}
+
+.card-resumo:nth-child(2) {
+    border-color: #70c982;
+}
+
+.card-resumo h2 {
+    color: var(--verde-escuro);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 1px;
+}
+
+.card-resumo strong {
+    color: var(--cinza-escuro);
+    font-size: 29px;
+    font-weight: 800;
+}
+
+.card-resumo span {
+    color: #777777;
+    font-size: 13px;
+    margin-top: 3px;
+}
+
+/* Próximas aulas */
+.proximas-aulas {
+    padding: 0 25px;
+}
+
+.proximas-aulas > h2 {
+    color: var(--cinza-escuro);
+    font-size: 19px;
+    font-weight: 750;
+    margin-bottom: 12px;
+}
+
+/* Card individual */
+.card-aula {
+    width: 100%;
+    min-height: 136px;
+    border: 1px solid #72d58a;
+    border-radius: 9px;
+    margin-bottom: 17px;
+    padding: 8px 15px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    background: var(--branco);
+    transition: 0.2s;
+}
+
+.card-aula:hover {
+    box-shadow: 0 3px 9px rgba(0, 0, 0, 0.10);
+}
+
+/* Ícones das modalidades */
+.icone-aula {
+    width: 59px;
+    height: 59px;
+    min-width: 59px;
+    border-radius: 50%;
+    background: #ddf8df;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icone-aula span {
+    font-size: 30px;
+}
+
+/* Informações */
+.informacoes-aula {
+    flex: 1;
+    min-width: 0;
+}
+
+.informacoes-aula h3 {
+    color: var(--cinza-escuro);
+    font-size: 20px;
+    font-weight: 750;
+    margin-bottom: 9px;
+}
+
+.informacoes-aula p {
+    color: #999999;
+    font-size: 13px;
+    line-height: 1.4;
+    max-width: 230px;
+}
+
+.horario {
+    display: block;
+    color: #999999;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.relogio {
+    font-size: 14px;
+    margin-right: 4px;
+}
+
+/* Botão agendar */
+.botao-agendar {
+    background: #0bbd42;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 750;
+    padding: 9px 17px;
+    border-radius: 6px;
+    white-space: nowrap;
+    transition: 0.2s;
+    margin-right: 33px;
+}
+
+.botao-agendar:hover {
+    background: var(--verde-escuro);
+}
+
+/* Mensagens */
+.mensagem {
+    position: relative;
+    z-index: 2;
+}
+
+/* =========================================
+   RESPONSIVIDADE
+========================================= */
+
+@media (max-width: 768px) {
+
+    .menu-lateral {
+        display: none;
+    }
+
+    .cabecalho-mobile {
+        display: none;
+    }
+
+    .conteudo {
+        width: 100%;
+        height: 100dvh;
+        min-height: 0;
+        padding: 5px 3px;
+        overflow-y: auto;
+    }
+
+    .painel {
+        width: 100%;
+        min-height: 100%;
+        padding-bottom: 25px;
+    }
+
+    .cabecalho {
+        height: 42px;
+        padding: 0 20px;
+    }
+
+    .usuario {
+        font-size: 10px;
+        gap: 7px;
+    }
+
+    .icone-usuario {
+        width: 24px;
+        height: 24px;
+    }
+
+    .boas-vindas {
+        padding: 0 27px;
+        margin-top: 0;
+        margin-bottom: 19px;
+    }
+
+    .boas-vindas h1 {
+        font-size: 18px;
+    }
+
+    .boas-vindas p {
+        font-size: 11px;
+    }
+
+    .resumo-aulas {
+        gap: 14px;
+        padding: 0 27px;
+        margin-bottom: 28px;
+    }
+
+    .card-resumo {
+        min-height: 69px;
+        padding: 6px;
+    }
+
+    .card-resumo h2 {
+        font-size: 11px;
+    }
+
+    .card-resumo strong {
+        font-size: 22px;
+    }
+
+    .card-resumo span {
+        font-size: 7px;
+    }
+
+    .proximas-aulas {
+        padding: 0 24px;
+    }
+
+    .proximas-aulas > h2 {
+        font-size: 13px;
+        margin-bottom: 8px;
+    }
+
+    .card-aula {
+        min-height: 59px;
+        padding: 5px 10px;
+        gap: 9px;
+        margin-bottom: 17px;
+    }
+
+    .icone-aula {
+        width: 45px;
+        height: 45px;
+        min-width: 45px;
+    }
+
+    .icone-aula span {
+        font-size: 23px;
+    }
+
+    .informacoes-aula h3 {
+        font-size: 12px;
+    }
+
+    .informacoes-aula p {
+        font-size: 8px;
+        line-height: 1.3;
+    }
+
+    .horario {
+        font-size: 8px;
+        margin-top: 2px;
+    }
+
+    .relogio {
+        font-size: 11px;
+    }
+
+    .botao-agendar {
+        font-size: 8px;
+        padding: 6px 9px;
+    }
+
+    .menu-inferior {
+        display: none;
+    }
+}
+
+/* Celulares menores */
+@media (max-width: 375px) {
+
+    .resumo-aulas {
+        gap: 9px;
+        padding: 0 18px;
+    }
+
+    .card-resumo h2 {
+        font-size: 10px;
+    }
+
+    .proximas-aulas {
+        padding: 0 17px;
+    }
+
+    .card-aula {
+        gap: 7px;
+        padding: 5px 7px;
+    }
+
+    .icone-aula {
+        width: 39px;
+        height: 39px;
+        min-width: 39px;
+    }
+
+    .icone-aula span {
+        font-size: 20px;
+    }
+
+    .informacoes-aula h3 {
+        font-size: 11px;
+    }
+
+    .informacoes-aula p {
+        font-size: 7px;
+    }
+
+    .botao-agendar {
+        font-size: 7px;
+        padding: 6px 7px;
+    }
+}

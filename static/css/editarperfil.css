@@ -1,0 +1,357 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@100..900&display=swap");
+
+/* CORES */
+:root {
+    --verde-principal: #238636;
+    --verde-escuro: #17652A;
+    --verde-claro: #0acb52;
+
+    --branco: #FFFFFF;
+    --cinza-claro: #F5F5F5;
+    --cinza-medio: #808080;
+    --cinza-escuro: #333333;
+    --cinza-texto: #333333;
+    --preto: #111111;
+
+    --sucesso: #2E7D32;
+    --erro: #D32F2F;
+}
+
+/* CONFIGURAÇÕES GERAIS */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Montserrat", sans-serif;
+    color: var(--cinza-texto);
+    background: var(--branco);
+    min-height: 100vh;
+}
+
+/* MENU LATERAL */
+.menu-lateral {
+    width: 260px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: var(--verde-escuro);
+    padding: 25px 18px;
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+}
+
+.logo {
+    width: 125px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 35px;
+    margin-right: 80px;
+}
+
+.menu-lateral nav {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.item-menu {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    color: var(--branco);
+    text-decoration: none;
+    font-size: 15px;
+    transition: 0.2s;
+}
+
+.item-menu img {
+    width: 23px;
+    height: 23px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.item-menu:hover,
+.item-menu.ativo {
+    background-color: var(--verde-principal);
+    border-color: var(--verde-claro);
+}
+
+.sair {
+    margin-top: auto;
+}
+
+/* CONTEÚDO */
+.conteudo {
+    min-height: 100vh;
+    margin-left: 205px;
+    padding: 30px 25px;
+}
+
+.cabecalho-mobile {
+    display: none;
+}
+
+/* CARTÃO DO PERFIL */
+.cartao-perfil {
+    position: relative;
+    width: 958px;
+    margin: 0 auto;
+    padding: 50px 27px 30px;
+    border: 1px solid #888888;
+    border-radius: 7px;
+    margin-left: 53px;
+    min-height: 550px;
+    margin-top: 22px;
+}
+
+.cartao-perfil h1 {
+    margin-bottom: 34px;
+    font-size: 25px;
+    font-weight: 700;
+}
+
+/* FOTO DE PERFIL */
+.foto-perfil {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.foto-perfil img {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--verde-principal);
+    display: block;
+    margin: 0 auto 10px;
+}
+
+.foto-perfil label {
+    display: block;
+    color: var(--verde-escuro);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+.foto-perfil input {
+    font-size: 12px;
+    max-width: 230px;
+}
+
+/* CAMPOS DO FORMULÁRIO */
+.campo {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 21px;
+}
+
+.campo label {
+    margin: 0 0 5px 2px;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.campo input {
+    width: 100%;
+    height: 47px;
+    padding: 0 13px;
+    border: 1px solid #D6D6D6;
+    border-radius: 9px;
+    outline: none;
+    background: var(--branco);
+    color: var(--cinza-texto);
+    font-family: inherit;
+    font-size: 12px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+.campo input::placeholder {
+    color: #888888;
+}
+
+/* BOTÃO */
+.cartao-perfil button {
+    display: block;
+    width: 48%;
+    min-height: 38px;
+    margin: 26px auto 0;
+    border: none;
+    border-radius: 7px;
+    background: var(--verde-principal);
+    color: var(--branco);
+    font-family: inherit;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.cartao-perfil button:hover {
+    background: var(--verde-escuro);
+}
+
+/* MENSAGENS */
+.mensagem {
+    margin: -15px 0 18px;
+    font-size: 12px;
+}
+
+.mensagem.sucesso {
+    color: var(--verde-escuro);
+}
+
+.mensagem.erro {
+    color: var(--erro);
+}
+
+/* MENU INFERIOR */
+.menu-inferior {
+    display: none;
+}
+
+/* CELULARES */
+@media (max-width: 600px) {
+
+    body {
+        min-height: 100vh;
+        padding-bottom: 55px;
+    }
+
+    .menu-lateral {
+        display: none;
+    }
+
+    .conteudo {
+    min-height: 100vh;
+    margin-left: 190px;
+    padding: 30px 25px;
+    }
+
+    .cabecalho-mobile {
+        display: flex;
+        align-items: center;
+        height: 48px;
+        margin: 0 -12px 25px;
+        padding: 5px 15px;
+        background: var(--verde-escuro);
+    }
+
+    .cabecalho-mobile img {
+        width: 65px;
+        height: 38px;
+        object-fit: contain;
+    }
+
+    .cartao-perfil {
+        width: 100%;
+        max-width: 425px;
+        min-height: 0;
+        margin: 0 auto;
+        padding: 22px 15px 25px;
+        border: 1px solid #8DB99A;
+        border-radius: 8px;
+    }
+
+    .usuario {
+        display: none;
+    }
+
+    .cartao-perfil h1 {
+        margin-bottom: 22px;
+        color: var(--preto);
+        font-size: 17px;
+    }
+
+    .foto-perfil {
+        margin-bottom: 20px;
+    }
+
+    .foto-perfil img {
+        width: 90px;
+        height: 90px;
+    }
+
+    .foto-perfil label {
+        font-size: 11px;
+    }
+
+    .foto-perfil input {
+        font-size: 10px;
+        max-width: 210px;
+    }
+
+    .campo {
+        margin-bottom: 20px;
+    }
+
+    .campo label {
+        margin-bottom: 5px;
+        font-size: 11px;
+    }
+
+    .campo input {
+        height: 36px;
+        padding: 0 10px;
+        font-size: 11px;
+        box-shadow: none;
+    }
+
+    .cartao-perfil button {
+        width: 80%;
+        max-width: 220px;
+        min-height: 35px;
+        margin: 25px auto 0;
+        font-size: 12px;
+    }
+
+    .mensagem {
+        margin: 0 0 15px;
+        font-size: 11px;
+    }
+
+    .item-menu img {
+        width: 22px;
+        height: 22px;
+        object-fit: contain;
+    }
+}
+
+/* CELULARES PEQUENOS */
+@media (max-width: 320px) {
+
+    .cartao-perfil {
+        padding-right: 12px;
+        padding-left: 12px;
+    }
+
+    .cartao-perfil h1 {
+        font-size: 15px;
+    }
+
+    .campo input {
+        font-size: 10px;
+    }
+
+    .menu-inferior .item-menu {
+        font-size: 8px;
+    }
+
+    .item-menu img {
+        width: 19px;
+        height: 19px;
+    }
+}

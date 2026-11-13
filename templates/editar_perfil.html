@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Meu Perfil - ATIVA Fitness</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/editarperfil.css') }}">
+</head>
+<body>
+
+    <aside class="menu-lateral">
+
+        <div class="logo">
+            <img src="{{ url_for('static', filename='img/logobranca.png') }}"
+                 alt="Logo ATIVA Fitness">
+        </div>
+
+        <nav class="navegacao">
+
+            <a href="{{ url_for(pagina_inicio) }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_home.png') }}" alt="">
+                <span>Início</span>
+            </a>
+
+            <a href="{{ url_for('grade_de_aulas') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_grade.png') }}" alt="">
+                <span>Grade de aulas</span>
+            </a>
+
+            <a href="{{ url_for('editar_perfil') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_perfil.png') }}" alt="">
+                <span>Perfil</span>
+            </a>
+
+        </nav>
+
+        <div class="sair">
+            <a href="{{ url_for('logout') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_sair.png') }}" alt="">
+                <span>Sair</span>
+            </a>
+        </div>
+
+    </aside>
+
+    <main class="conteudo">
+
+        <header class="cabecalho-mobile">
+            <img src="{{ url_for('static', filename='img/logobranca.png') }}" alt="ATIVA Fitness">
+        </header>
+
+        <section class="cartao-perfil">
+
+            <h1>Meu Perfil</h1>
+
+            {% with mensagens = get_flashed_messages(with_categories=true) %}
+                {% if mensagens %}
+                    {% for categoria, mensagem in mensagens %}
+                        <div class="mensagem {{ categoria }}">
+                            {{ mensagem }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('editar_perfil') }}"
+                  method="POST"
+                  enctype="multipart/form-data">
+
+                <div class="foto-perfil">
+
+                    <img src="{{ url_for('static', filename=foto_perfil if foto_perfil else 'img/perfil_padrao.jpg') }}"
+                         alt="Foto de perfil">
+
+                    <label for="foto">Alterar foto de perfil</label>
+
+                    <input type="file"
+                           id="foto"
+                           name="foto"
+                           accept="image/png, image/jpeg">
+
+                </div>
+
+                <div class="campo">
+                    <label for="nome">Nome</label>
+                    <input type="text" id="nome" name="nome"
+                           placeholder="Digite seu nome"
+                           value="{{ nome }}" required>
+                </div>
+
+                <div class="campo">
+                    <label for="email">E-mail</label>
+                    <input type="email" id="email" name="email"
+                           placeholder="Digite seu e-mail"
+                           value="{{ email }}" required>
+                </div>
+
+                <div class="campo">
+                    <label for="senha">Nova senha</label>
+                    <input type="password" id="senha" name="senha"
+                           placeholder="Digite uma nova senha"
+                           autocomplete="new-password">
+                </div>
+
+                <div class="campo">
+                    <label for="confirmar_senha">Confirmar nova senha</label>
+                    <input type="password" id="confirmar_senha" name="senha2"
+                           placeholder="Confirme a nova senha"
+                           autocomplete="new-password">
+                </div>
+
+                <button type="submit">Salvar alterações</button>
+
+            </form>
+
+        </section>
+
+    </main>
+
+</body>
+</html>

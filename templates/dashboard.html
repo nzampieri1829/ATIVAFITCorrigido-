@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Dashboard - ATIVA Fitness</title>
+
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    </head>
+    <body>
+
+        <header class="cabecalho-mobile">
+            <img src="{{ url_for('static', filename='img/logobranca.png') }}" alt="ATIVA Fitness">
+        </header>
+
+   <aside class="menu-lateral">
+
+        <div class="logo">
+            <img src="{{ url_for('static', filename='img/logobranca.png') }}"
+                 alt="Logo ATIVA Fitness">
+        </div>
+
+        <nav class="navegacao">
+
+            <a href="{{ url_for('index') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_home.png') }}"
+                     alt="">
+                <span>Início</span>
+            </a>
+
+            <a href="{{ url_for('grade_aulas_professor' if perfil == 2 else 'grade_aulas_aluno') }}" class="item-menu">                <img src="{{ url_for('static', filename='img/icone_grade.png') }}"
+                     alt="">
+                <span>Grade de aulas</span>
+            </a>
+
+            <a href="{{ url_for('editar_perfil') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_perfil.png') }}"
+                     alt="">
+                <span>Perfil</span>
+            </a>
+
+        </nav>
+
+        <div class="sair">
+            <a href="{{ url_for('logout') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_sair.png') }}"
+                     alt="">
+                <span>Sair</span>
+            </a>
+        </div>
+
+    </aside>
+
+
+<main class="conteudo">
+
+    <div class="painel">
+
+        <!-- CABEÇALHO -->
+        <header class="cabecalho">
+            <div class="usuario">
+                <span>{{ nome }}</span>
+
+                <div class="icone-usuario">
+                    <img src="{{ url_for('static', filename='img/img_perfil_nome.png') }}"
+                         alt="Usuário">
+                </div>
+            </div>
+        </header>
+
+        <!-- MENSAGENS DO FLASK -->
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% if mensagens %}
+                {% for categoria, mensagem in mensagens %}
+                    <p class="mensagem {{ categoria }}">{{ mensagem }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- BOAS-VINDAS -->
+        <section class="boas-vindas">
+            <h1>Olá, {{ nome }}!</h1>
+            <p>É ótimo ter você conosco!</p>
+        </section>
+
+        <!-- CARDS DE RESUMO -->
+        <section class="resumo-aulas">
+
+            <div class="card-resumo">
+                <h2>MINHAS AULAS</h2>
+                <strong>{{ minhas_aulas }}</strong>
+                <span>{% if perfil == 2 %}Aulas atribuídas a você{% else %}Aulas agendadas{% endif %}</span>
+            </div>
+
+            {% if perfil == 3 %}
+            <div class="card-resumo">
+                <h2>AULAS DISPONÍVEIS</h2>
+                <strong>{{ aulas_disponiveis }}</strong>
+                <span>Aulas com vagas para inscrição</span>
+            </div>
+            {% endif %}
+
+        </section>
+
+        <!-- PRÓXIMAS AULAS -->
+        <section class="proximas-aulas">
+
+            <h2>Próximas aulas</h2>
+
+            {% for aula in proximas_aulas %}
+            <article class="card-aula">
+                <div class="informacoes-aula">
+                    <h3>{{ aula.nome }}</h3>
+                    {% if aula.descricao %}<p>{{ aula.descricao }}</p>{% endif %}
+                    <span class="horario">
+                        <span class="relogio">◷</span>
+                        {{ aula.dia }} — {{ aula.inicio }} às {{ aula.fim }}
+                    </span>
+                </div>
+                {% if perfil == 3 %}
+                <a href="{{ url_for('grade_aulas_aluno') }}" class="botao-agendar">
+                    VER MINHA GRADE
+                </a>
+                {% endif %}
+            </article>
+            {% else %}
+                <article class="card-aula">
+                    <div class="informacoes-aula">
+                        {% if perfil == 2 %}
+                        <h3>Nenhuma aula atribuída</h3>
+                        <p>As aulas cadastradas para você aparecerão aqui.</p>
+                        {% else %}
+                        <h3>Nenhuma aula agendada</h3>
+                        <p>Veja a grade de aulas para fazer sua primeira inscrição.</p>
+                        {% endif %}
+                    </div>
+                    {% if perfil == 3 %}
+                    <a href="{{ url_for('grade_aulas_aluno') }}" class="botao-agendar">
+                        VER AULAS
+                    </a>
+                    {% endif %}
+                </article>
+            {% endfor %}
+
+        </section>
+
+    </div>
+
+</main>
+
+    </body>
+</html>

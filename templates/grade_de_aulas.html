@@ -1,0 +1,152 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Grade de Aulas - ATIVA Fitness</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/grade_de_aulas.css') }}">
+</head>
+
+<body>
+
+    <!-- MENU LATERAL -->
+    <aside class="menu-lateral">
+
+        <div class="logo">
+            <img src="{{ url_for('static', filename='img/logobranca.png') }}"
+                 alt="Logo ATIVA Fitness">
+        </div>
+
+        <nav>
+            <a href="{{ url_for('dashboard_admin') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_home.png') }}"
+                     alt="">
+                Início
+            </a>
+
+            <a href="{{ url_for('grade_de_aulas') }}" class="item-menu ativo">
+                <img src="{{ url_for('static', filename='img/icone_grade.png') }}"
+                     alt="">
+                Grade de Aulas
+            </a>
+
+            <a href="{{ url_for('editar_perfil') }}" class="item-menu">
+                <img src="{{ url_for('static', filename='img/icone_perfil.png') }}"
+                     alt="">
+                Perfil
+            </a>
+
+            <a href="{{ url_for('logout') }}" class="item-menu sair">
+                <img src="{{ url_for('static', filename='img/icone_sair.png') }}"
+                     alt="">
+                Sair
+            </a>
+        </nav>
+
+    </aside>
+
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="conteudo-principal">
+
+        <div class="cabecalho-pagina">
+            <div>
+                <h1>Grade de Aulas</h1>
+                <p class="descricao-pagina">
+                    Confira as aulas cadastradas na academia.
+                </p>
+            </div>
+
+            <a href="{{ url_for('cadastrar_aula') }}" class="botao-nova-aula">
+                + Nova aula
+            </a>
+        </div>
+
+        <div class="botoes-relatorio">
+            <a href="{{ url_for('relatorio_aulas', tipo='esgotadas') }}" class="botao-nova-aula">PDF: aulas esgotadas</a>
+            <a href="{{ url_for('relatorio_aulas', tipo='com_vagas') }}" class="botao-nova-aula">PDF: aulas com vagas</a>
+        </div>
+
+        {% with mensagens = get_flashed_messages(with_categories=true) %}
+            {% for categoria, mensagem in mensagens %}
+                <p class="mensagem {{ categoria }}">{{ mensagem }}</p>
+            {% endfor %}
+        {% endwith %}
+
+        <!-- TABELA DE AULAS -->
+        <div class="tabela-container">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Modalidade</th>
+                        <th>Professor</th>
+                        <th>Dia da semana</th>
+                        <th>Horário de início</th>
+                        <th>Horário de término</th>
+                        <th>Ocupação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for aula in aulas %}
+                    <tr>
+                        <td>{{ aula[1] }}</td>
+                        <td>{{ aula[2] }}</td>
+
+                        <!-- A rota já converteu o dia para inteiro -->
+                        <td>{{ dias_semana.get(aula[4], 'Não informado') }}</td>
+
+                        <td>{{ aula[5] }}</td>
+                        <td>{{ aula[6] }}</td>
+                        <td>{{ aula[7] }} / {{ aula[3] }} alunos</td>
+
+                        <td class="acoes-tabela">
+                            <div class="botoes-acoes">
+
+                                <a href="{{ url_for('editar_aula', id_aula=aula[0]) }}"
+                                   class="botao-acao editar">
+                                    Editar
+                                </a>
+
+                                <form method="POST"
+                                      action="{{ url_for('excluir_aula', id_aula=aula[0]) }}"
+                                      onsubmit="return confirm('Tem certeza de que deseja excluir esta aula?');">
+
+                                    <button type="submit" class="botao-acao excluir">
+                                        Excluir
+                                    </button>
+
+                                </form>
+
+                            </div>
+                        </td>
+                    </tr>
+
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="sem-aulas">
+                            Nenhuma aula cadastrada.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+
+        <!-- VOLTAR AO INÍCIO -->
+        <div class="voltar-container">
+            <a href="{{ url_for('dashboard_admin') }}" class="botao-voltar">
+                Voltar ao início
+            </a>
+        </div>
+
+    </main>
+
+</body>
+</html>
